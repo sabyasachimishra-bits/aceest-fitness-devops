@@ -9,7 +9,7 @@ pipeline {
 
     environment {
         APP_IMAGE = "aceest-fitness"
-        CONTAINER_NAME = "aceest-jenkins-${BUILD_NUMBER}"
+        CONTAINER_NAME = "aceest-fitness-${BUILD_NUMBER}"
     }
 
     stages {
@@ -21,41 +21,18 @@ pipeline {
         }
 
         stage('Source Validation') {
-    steps {
-        sh '''
-        echo "==== CURRENT DIR ===="
-        pwd
-
-        echo "==== WORKSPACE FILES ===="
-        ls -la
-
-        echo "==== RECURSIVE LIST ===="
-        find . -type f
-
-        echo "==== INSIDE DOCKER ===="
-
-        docker run --rm \
-          -v "$WORKSPACE:/app" \
-          -w /app \
-          python:3.13-slim \
-          sh -c '
-          pwd
-          ls -la
-          find . -type f
-          python -m compileall app.py tests
-          '
-        '''
-    }
-}
+            steps {
+                sh '''
+                python3 -m compileall app.py tests
+                '''
+            }
+        }
 
         stage('Lint') {
             steps {
                 sh '''
-                docker run --rm \
-                  -v "$WORKSPACE:/app" \
-                  -w /app \
-                  python:3.13-slim \
-                  sh -c "pip install --no-cache-dir -r requirements-dev.txt && python -m ruff check ."
+                python3 -m pip install --break-system-packages -r requirements-dev.txt
+                python3 -m ruff check .
                 '''
             }
         }
@@ -63,11 +40,7 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 sh '''
-                docker run --rm \
-                  -v "$WORKSPACE:/app" \
-                  -w /app \
-                  python:3.13-slim \
-                  sh -c "pip install --no-cache-dir -r requirements-dev.txt && python -m pytest"
+                python3 -m pytest
                 '''
             }
         }
@@ -76,8 +49,8 @@ pipeline {
             steps {
                 sh '''
                 docker build \
-                  --tag ${APP_IMAGE}:${BUILD_NUMBER} \
-                  --tag ${APP_IMAGE}:latest \
+                  -t ${APP_IMAGE}:${BUILD_NUMBER} \
+                  -t ${APP_IMAGE}:latest \
                   .
                 '''
             }
@@ -88,15 +61,18 @@ pipeline {
                 sh '''
                 docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1 || true
 
-                docker run --rm -d \
+                docker run -d \
                   --name ${CONTAINER_NAME} \
+                  -p 5000:5000 \
                   ${APP_IMAGE}:${BUILD_NUMBER}
 
-                sleep 10
+                sleep 15
+
+                curl --fail http://localhost:5000/health
 
                 docker logs ${CONTAINER_NAME}
 
-                docker rm -f ${CONTAINER_NAME} || true
+                docker stop ${CONTAINER_NAME}
                 '''
             }
         }
@@ -104,7 +80,7 @@ pipeline {
 
     post {
         always {
-            sh 'docker rm -f ${CONTAINER_NAME} || true'
+            sh 'docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1 || true'
         }
 
         success {
