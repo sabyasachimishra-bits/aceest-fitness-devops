@@ -16,22 +16,37 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                cleanWs()
                 checkout scm
             }
         }
 
         stage('Source Validation') {
-            steps {
-                sh '''
-                docker run --rm \
-                  -v "$WORKSPACE:/app" \
-                  -w /app \
-                  python:3.13-slim \
-                  python -m compileall app.py tests
-                '''
-            }
-        }
+    steps {
+        sh '''
+        echo "==== CURRENT DIR ===="
+        pwd
+
+        echo "==== WORKSPACE FILES ===="
+        ls -la
+
+        echo "==== RECURSIVE LIST ===="
+        find . -type f
+
+        echo "==== INSIDE DOCKER ===="
+
+        docker run --rm \
+          -v "$WORKSPACE:/app" \
+          -w /app \
+          python:3.13-slim \
+          sh -c '
+          pwd
+          ls -la
+          find . -type f
+          python -m compileall app.py tests
+          '
+        '''
+    }
+}
 
         stage('Lint') {
             steps {
