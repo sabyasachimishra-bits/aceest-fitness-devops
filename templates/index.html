@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACEest Fitness and Gym</title>
+
+    <style>
+        :root {
+            --gold: #d4af37;
+            --dark: #1a1a1a;
+            --panel: #282828;
+            --light: #f5f5f5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: var(--dark);
+            color: var(--light);
+        }
+
+        header {
+            background: var(--gold);
+            color: #000;
+            padding: 24px;
+            text-align: center;
+        }
+
+        main {
+            width: min(1100px, 92%);
+            margin: 28px auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            background: var(--panel);
+            padding: 20px;
+            border-radius: 10px;
+            border-top: 4px solid var(--gold);
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            margin-bottom: 5px;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #777;
+        }
+
+        button {
+            margin-top: 18px;
+            background: var(--gold);
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            background: var(--panel);
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: 1px solid #555;
+            text-align: left;
+        }
+
+        th {
+            background: var(--gold);
+            color: #000;
+        }
+
+        .status {
+            color: var(--gold);
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <h1>ACEest Functional Fitness System</h1>
+    <p>Fitness programs, client registration, and calorie estimation</p>
+</header>
+
+<main>
+    <section class="grid">
+        <div class="card">
+            <h2>Register Client</h2>
+
+            <form id="client-form">
+                <label for="name">Client Name</label>
+                <input id="name" name="name" required>
+
+                <label for="age">Age</label>
+                <input id="age" name="age" type="number" min="1" required>
+
+                <label for="weight">Weight in kg</label>
+                <input id="weight" name="weight" type="number" min="1" step="0.1" required>
+
+                <label for="program">Fitness Program</label>
+                <select id="program" name="program" required>
+                    <option value="">Select a program</option>
+                    {% for program_name in programs %}
+                    <option value="{{ program_name }}">{{ program_name }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit">Save Client</button>
+            </form>
+
+            <p id="message" class="status"></p>
+        </div>
+
+        {% for program_name, program in programs.items() %}
+        <div class="card">
+            <h2>{{ program_name }}</h2>
+
+            <h3>Workout Plan</h3>
+            <ul>
+                {% for workout in program.workout %}
+                <li>{{ workout }}</li>
+                {% endfor %}
+            </ul>
+
+            <h3>Nutrition Guidance</h3>
+            <ul>
+                {% for diet_item in program.diet %}
+                <li>{{ diet_item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section>
+        <h2>Registered Clients</h2>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Weight</th>
+                <th>Program</th>
+                <th>Estimated Calories</th>
+            </tr>
+            </thead>
+
+            <tbody id="client-table">
+            {% for client in clients %}
+            <tr>
+                <td>{{ client.name }}</td>
+                <td>{{ client.age }}</td>
+                <td>{{ client.weight }}</td>
+                <td>{{ client.program }}</td>
+                <td>{{ client.calories }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5">No clients have been registered.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<script>
+    const form = document.getElementById("client-form");
+    const message = document.getElementById("message");
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const response = await fetch("/clients", {
+            method: "POST",
+            body: new FormData(form)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            message.textContent = data.error || "Unable to save client.";
+            return;
+        }
+
+        message.textContent =
+            `Client saved. Estimated calories: ${data.estimated_calories} kcal/day`;
+
+        window.setTimeout(() => window.location.reload(), 800);
+    });
+</script>
+</body>
+</html>
