@@ -56,27 +56,24 @@ pipeline {
             }
         }
 
-        stage('Container Smoke Test') {
-            steps {
-                sh '''
-                docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1 || true
+       stage('Container Smoke Test') {
+    steps {
+        sh '''
+        docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1 || true
 
-                docker run -d \
-                  --name ${CONTAINER_NAME} \
-                  -p 5000:5000 \
-                  ${APP_IMAGE}:${BUILD_NUMBER}
+        docker run -d \
+          --name ${CONTAINER_NAME} \
+          ${APP_IMAGE}:${BUILD_NUMBER}
 
-                sleep 15
+        sleep 15
 
-                curl --fail http://localhost:5000/health
+        docker exec ${CONTAINER_NAME} \
+          python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"
 
-                docker logs ${CONTAINER_NAME}
-
-                docker stop ${CONTAINER_NAME}
-                '''
-            }
-        }
+        docker logs ${CONTAINER_NAME}
+        '''
     }
+}
 
     post {
         always {
