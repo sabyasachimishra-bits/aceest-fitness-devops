@@ -31,7 +31,7 @@ pipeline {
         stage('Lint') {
             steps {
                 sh '''
-                python3 -m pip install --break-system-packages -r requirements-dev.txt
+                python3 -m pip install --user -r requirements-dev.txt
                 python3 -m ruff check .
                 '''
             }
