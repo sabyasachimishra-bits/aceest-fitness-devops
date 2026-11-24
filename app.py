@@ -4,6 +4,13 @@ from contextlib import closing
 
 from flask import Flask, g, jsonify, render_template, request
 
+
+# Deployment metadata for Assignment 2
+APP_VERSION = os.getenv("APP_VERSION", "dev")
+DEPLOYMENT_COLOR = os.getenv("DEPLOYMENT_COLOR", "none")
+RELEASE_TRACK = os.getenv("RELEASE_TRACK", "stable")
+
+
 PROGRAMS = {
     "Fat Loss (FL)": {
         "calorie_factor": 22,
@@ -55,7 +62,10 @@ def create_app(test_config=None):
     app = Flask(__name__)
 
     app.config.from_mapping(
-        DATABASE=os.getenv("DATABASE_PATH", "/tmp/aceest_fitness.db"),
+        DATABASE=os.getenv(
+            "DATABASE_PATH",
+            "/tmp/aceest_fitness.db",
+        ),
         TESTING=False,
     )
 
@@ -66,15 +76,24 @@ def create_app(test_config=None):
         if "db" not in g:
             g.db = sqlite3.connect(app.config["DATABASE"])
             g.db.row_factory = sqlite3.Row
+
         return g.db
 
     def init_db():
-        database_directory = os.path.dirname(app.config["DATABASE"])
+        database_directory = os.path.dirname(
+            app.config["DATABASE"]
+        )
 
         if database_directory:
-            os.makedirs(database_directory, exist_ok=True)
+            os.makedirs(
+                database_directory,
+                exist_ok=True,
+            )
 
-        with closing(sqlite3.connect(app.config["DATABASE"])) as connection:
+        with closing(
+            sqlite3.connect(app.config["DATABASE"])
+        ) as connection:
+
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS clients (
@@ -87,6 +106,7 @@ def create_app(test_config=None):
                 )
                 """
             )
+
             connection.commit()
 
     @app.teardown_appcontext
@@ -99,9 +119,16 @@ def create_app(test_config=None):
     @app.get("/")
     def index():
         database = get_db()
+
         clients = database.execute(
             """
-            SELECT id, name, age, weight, program, calories
+            SELECT
+                id,
+                name,
+                age,
+                weight,
+                program,
+                calories
             FROM clients
             ORDER BY id DESC
             """
@@ -115,12 +142,31 @@ def create_app(test_config=None):
 
     @app.get("/health")
     def health():
-        return jsonify(
-            {
-                "application": "ACEest Fitness and Gym",
-                "status": "healthy",
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "application": "ACEest Fitness and Gym",
+                    "status": "healthy",
+                    "version": APP_VERSION,
+                }
+            ),
+            200,
+        )
+
+    # Assignment 2 deployment/version endpoint
+    @app.get("/version")
+    def version():
+        return (
+            jsonify(
+                {
+                    "application": "ACEest Fitness and Gym",
+                    "version": APP_VERSION,
+                    "deployment_color": DEPLOYMENT_COLOR,
+                    "release_track": RELEASE_TRACK,
+                }
+            ),
+            200,
+        )
 
     @app.get("/api/programs")
     def get_programs():
@@ -134,82 +180,176 @@ def create_app(test_config=None):
         weight = payload.get("weight")
 
         if program not in PROGRAMS:
-            return jsonify({"error": "Invalid fitness program"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid fitness program",
+                    }
+                ),
+                400,
+            )
 
         try:
             weight = float(weight)
         except (TypeError, ValueError):
-            return jsonify({"error": "Weight must be numeric"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": "Weight must be numeric",
+                    }
+                ),
+                400,
+            )
 
         if weight <= 0:
-            return jsonify({"error": "Weight must be greater than zero"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Weight must be greater than zero"
+                        ),
+                    }
+                ),
+                400,
+            )
 
-        calories = int(weight * PROGRAMS[program]["calorie_factor"])
+        calories = int(
+            weight * PROGRAMS[program]["calorie_factor"]
+        )
 
-        return jsonify(
-            {
-                "program": program,
-                "weight": weight,
-                "estimated_calories": calories,
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "program": program,
+                    "weight": weight,
+                    "estimated_calories": calories,
+                }
+            ),
+            200,
+        )
 
     @app.post("/clients")
     def create_client():
         name = request.form.get("name", "").strip()
         age = request.form.get("age", "").strip()
         weight = request.form.get("weight", "").strip()
-        program = request.form.get("program", "").strip()
+        program = request.form.get(
+            "program",
+            "",
+        ).strip()
 
-        if not name or not age or not weight or program not in PROGRAMS:
-            return jsonify({"error": "Valid name, age, weight, and program are required"}), 400
+        if (
+            not name
+            or not age
+            or not weight
+            or program not in PROGRAMS
+        ):
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Valid name, age, weight, "
+                            "and program are required"
+                        ),
+                    }
+                ),
+                400,
+            )
 
         try:
             age = int(age)
             weight = float(weight)
         except ValueError:
-            return jsonify({"error": "Age and weight must be numeric"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Age and weight must be numeric"
+                        ),
+                    }
+                ),
+                400,
+            )
 
         if age <= 0 or weight <= 0:
-            return jsonify({"error": "Age and weight must be greater than zero"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Age and weight must be "
+                            "greater than zero"
+                        ),
+                    }
+                ),
+                400,
+            )
 
-        calories = int(weight * PROGRAMS[program]["calorie_factor"])
+        calories = int(
+            weight * PROGRAMS[program]["calorie_factor"]
+        )
 
         database = get_db()
+
         cursor = database.execute(
             """
-            INSERT INTO clients (name, age, weight, program, calories)
+            INSERT INTO clients (
+                name,
+                age,
+                weight,
+                program,
+                calories
+            )
             VALUES (?, ?, ?, ?, ?)
             """,
-            (name, age, weight, program, calories),
+            (
+                name,
+                age,
+                weight,
+                program,
+                calories,
+            ),
         )
+
         database.commit()
 
-        return jsonify(
-            {
-                "id": cursor.lastrowid,
-                "name": name,
-                "age": age,
-                "weight": weight,
-                "program": program,
-                "estimated_calories": calories,
-            }
-        ), 201
+        return (
+            jsonify(
+                {
+                    "id": cursor.lastrowid,
+                    "name": name,
+                    "age": age,
+                    "weight": weight,
+                    "program": program,
+                    "estimated_calories": calories,
+                }
+            ),
+            201,
+        )
 
     @app.get("/api/clients")
     def get_clients():
         database = get_db()
+
         rows = database.execute(
             """
-            SELECT id, name, age, weight, program, calories
+            SELECT
+                id,
+                name,
+                age,
+                weight,
+                program,
+                calories
             FROM clients
             ORDER BY id
             """
         ).fetchall()
 
-        return jsonify([dict(row) for row in rows]), 200
+        return jsonify(
+            [dict(row) for row in rows]
+        ), 200
 
     init_db()
+
     return app
 
 
@@ -219,6 +359,11 @@ app = create_app()
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
-        port=int(os.getenv("PORT", "5000")),
+        port=int(
+            os.getenv(
+                "PORT",
+                "5000",
+            )
+        ),
         debug=False,
     )
