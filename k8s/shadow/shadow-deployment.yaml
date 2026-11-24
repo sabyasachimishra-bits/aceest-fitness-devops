@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aceest-fitness-shadow
+  namespace: aceest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aceest-fitness-shadow
+  template:
+    metadata:
+      labels:
+        app: aceest-fitness-shadow
+    spec:
+      containers:
+        - name: aceest-fitness
+          image: sabyasachi1990/aceest-fitness:v2.1.0
+          ports:
+            - containerPort: 5000
+          env:
+            - name: APP_VERSION
+              value: "v2.1.0-shadow"
+            - name: RELEASE_TRACK
+              value: "shadow"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aceest-fitness-shadow
+  namespace: aceest
+spec:
+  selector:
+    app: aceest-fitness-shadow
+  ports:
+    - port: 80
+      targetPort: 5000
